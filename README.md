@@ -188,8 +188,9 @@ func NumTokensFromMessages(messages []openai.ChatCompletionMessage, model string
 
 | Encoding name           | OpenAI models                                                                                          |
 |-------------------------|--------------------------------------------------------------------------------------------------------|
-| `o200k_base`            | `gpt-4o`, `gpt-4.1`, `gpt-4.5`                                                                         |
-| `cl100k_base`           | `gpt-4`, `gpt-3.5-turbo`, `text-embedding-ada-002`, `text-embedding-3-small`, `text-embedding-3-large` |
+| `o200k_base`            | `o1`, `o3`, `o4-mini`, `gpt-5`, `gpt-4o`, `gpt-4.1`, `gpt-4.5`                                          |
+| `o200k_harmony`         | `gpt-oss-*`                                                                                               |
+| `cl100k_base`           | `gpt-4`, `gpt-3.5-turbo`, `gpt-35-turbo`, `davinci-002`, `babbage-002`, `text-embedding-ada-002`, `text-embedding-3-small`, `text-embedding-3-large` |
 | `p50k_base`             | Codex models, `text-davinci-002`, `text-davinci-003`                                                   |
 | `r50k_base` (or `gpt2`) | GPT-3 models like `davinci`                                                                            |
 
@@ -197,14 +198,35 @@ func NumTokensFromMessages(messages []openai.ChatCompletionMessage, model string
 
 | Model name                   | OpenAI models |
 |------------------------------|---------------|
+| o1-*                         | o200k_base    |
+| o3-*                         | o200k_base    |
+| o4-mini-*                    | o200k_base    |
+| gpt-5-*                      | o200k_base    |
 | gpt-4.5-*                    | o200k_base    |
 | gpt-4.1-*                    | o200k_base    |
+| chatgpt-4o-*                 | o200k_base    |
 | gpt-4o-*                     | o200k_base    |
 | gpt-4-*                      | cl100k_base   |
 | gpt-3.5-turbo-*              | cl100k_base   |
+| gpt-35-turbo-*               | cl100k_base   |
+| gpt-oss-*                    | o200k_harmony |
+| ft:gpt-4o*                   | o200k_base    |
+| ft:gpt-4*                    | cl100k_base   |
+| ft:gpt-3.5-turbo*            | cl100k_base   |
+| ft:davinci-002*              | cl100k_base   |
+| ft:babbage-002*              | cl100k_base   |
+| o1                           | o200k_base    |
+| o3                           | o200k_base    |
+| o4-mini                      | o200k_base    |
+| gpt-5                        | o200k_base    |
 | gpt-4o                       | o200k_base    |
+| gpt-4.1                      | o200k_base    |
 | gpt-4                        | cl100k_base   |
 | gpt-3.5-turbo                | cl100k_base   |
+| gpt-3.5                      | cl100k_base   |
+| gpt-35-turbo                 | cl100k_base   |
+| davinci-002                  | cl100k_base   |
+| babbage-002                  | cl100k_base   |
 | text-davinci-003             | p50k_base     |
 | text-davinci-002             | p50k_base     |
 | text-davinci-001             | r50k_base     |
@@ -237,6 +259,7 @@ func NumTokensFromMessages(messages []openai.ChatCompletionMessage, model string
 | code-search-babbage-code-001 | r50k_base     |
 | code-search-ada-code-001     | r50k_base     |
 | gpt2                         | gpt2          |
+| gpt-2                        | gpt2          |
 
 # Test
 
