@@ -2,7 +2,6 @@ package tiktoken
 
 import (
 	"errors"
-	"fmt"
 	"strings"
 	"sync"
 )
@@ -14,36 +13,28 @@ const FIM_SUFFIX string = "<|fim_suffix|>"
 const ENDOFPROMPT string = "<|endofprompt|>"
 
 const (
-	MODEL_GPT2          string = "gpt2"
-	MODEL_O200K_BASE    string = "o200k_base"
-	MODEL_O200K_HARMONY string = "o200k_harmony"
-	MODEL_CL100K_BASE   string = "cl100k_base"
-	MODEL_P50K_BASE     string = "p50k_base"
-	MODEL_P50K_EDIT     string = "p50k_edit"
-	MODEL_R50K_BASE     string = "r50k_base"
+	MODEL_O200K_BASE  string = "o200k_base"
+	MODEL_CL100K_BASE string = "cl100k_base"
+	MODEL_P50K_BASE   string = "p50k_base"
+	MODEL_P50K_EDIT   string = "p50k_edit"
+	MODEL_R50K_BASE   string = "r50k_base"
 )
 
+// unicodeSpaces defines the character class contents matching Unicode's
+// White_Space property. Go's regexp \s only matches ASCII whitespace
+// [\t\n\f\r ], but the reference tiktoken implementation (Python/Rust)
+// uses Unicode-aware \s. This constant ensures parity with the reference
+// for characters like non-breaking space (U+00A0) and ideographic space
+// (U+3000).
+const unicodeSpaces = `\t\n\v\f\r\x{85}\p{Z}`
+
 var MODEL_TO_ENCODING = map[string]string{
-	// reasoning
-	"o1":      MODEL_O200K_BASE,
-	"o3":      MODEL_O200K_BASE,
-	"o4-mini": MODEL_O200K_BASE,
 	// chat
-	"gpt-5":         MODEL_O200K_BASE,
 	"gpt-4.5":       MODEL_O200K_BASE,
 	"gpt-4.1":       MODEL_O200K_BASE,
 	"gpt-4o":        MODEL_O200K_BASE,
 	"gpt-4":         MODEL_CL100K_BASE,
 	"gpt-3.5-turbo": MODEL_CL100K_BASE,
-	"gpt-3.5":       MODEL_CL100K_BASE,
-	"gpt-35-turbo":  MODEL_CL100K_BASE,
-	// base
-	"davinci-002": MODEL_CL100K_BASE,
-	"babbage-002": MODEL_CL100K_BASE,
-	// embeddings
-	"text-embedding-ada-002": MODEL_CL100K_BASE,
-	"text-embedding-3-large": MODEL_CL100K_BASE,
-	"text-embedding-3-small": MODEL_CL100K_BASE,
 	// text
 	"text-davinci-003": MODEL_P50K_BASE,
 	"text-davinci-002": MODEL_P50K_BASE,
@@ -65,6 +56,10 @@ var MODEL_TO_ENCODING = map[string]string{
 	// edit
 	"text-davinci-edit-001": MODEL_P50K_EDIT,
 	"code-davinci-edit-001": MODEL_P50K_EDIT,
+	// embeddings
+	"text-embedding-ada-002": MODEL_CL100K_BASE,
+	"text-embedding-3-large": MODEL_CL100K_BASE,
+	"text-embedding-3-small": MODEL_CL100K_BASE,
 	// old embeddings
 	"text-similarity-davinci-001":  MODEL_R50K_BASE,
 	"text-similarity-curie-001":    MODEL_R50K_BASE,
@@ -77,31 +72,16 @@ var MODEL_TO_ENCODING = map[string]string{
 	"code-search-babbage-code-001": MODEL_R50K_BASE,
 	"code-search-ada-code-001":     MODEL_R50K_BASE,
 	// open source
-	"gpt2":  MODEL_GPT2,
-	"gpt-2": MODEL_GPT2,
+	"gpt2": "gpt2",
 }
 
 var MODEL_PREFIX_TO_ENCODING = map[string]string{
-	// reasoning
-	"o1-":      MODEL_O200K_BASE,
-	"o3-":      MODEL_O200K_BASE,
-	"o4-mini-": MODEL_O200K_BASE,
 	// chat
-	"gpt-5-":         MODEL_O200K_BASE,
-	"gpt-4.5-":       MODEL_O200K_BASE,
-	"gpt-4.1-":       MODEL_O200K_BASE,
-	"chatgpt-4o-":    MODEL_O200K_BASE,
-	"gpt-4o-":        MODEL_O200K_BASE,
-	"gpt-4-":         MODEL_CL100K_BASE,
-	"gpt-3.5-turbo-": MODEL_CL100K_BASE,
-	"gpt-35-turbo-":  MODEL_CL100K_BASE,
-	"gpt-oss-":       MODEL_O200K_HARMONY,
-	// fine-tuned
-	"ft:gpt-4o":        MODEL_O200K_BASE,
-	"ft:gpt-4":         MODEL_CL100K_BASE,
-	"ft:gpt-3.5-turbo": MODEL_CL100K_BASE,
-	"ft:davinci-002":   MODEL_CL100K_BASE,
-	"ft:babbage-002":   MODEL_CL100K_BASE,
+	"gpt-4.5-":       MODEL_O200K_BASE,  // e.g., gpt-4.5-preview, etc.
+	"gpt-4.1-":       MODEL_O200K_BASE,  // e.g., gpt-4.1-2025-04-14, etc.
+	"gpt-4o-":        MODEL_O200K_BASE,  // e.g., gpt-4o-2024-05-13, etc.
+	"gpt-4-":         MODEL_CL100K_BASE, // e.g., gpt-4-0314, etc., plus gpt-4-32k
+	"gpt-3.5-turbo-": MODEL_CL100K_BASE, // e.g, gpt-3.5-turbo-0301, -0401, etc.
 }
 
 var encodingMap map[string]*Encoding
@@ -140,12 +120,8 @@ func getEncoding(encodingName string) (*Encoding, error) {
 
 func initEncoding(encodingName string) (*Encoding, error) {
 	switch encodingName {
-	case MODEL_GPT2:
-		return gpt2()
 	case MODEL_O200K_BASE:
 		return o200k_base()
-	case MODEL_O200K_HARMONY:
-		return o200k_harmony()
 	case MODEL_CL100K_BASE:
 		return cl100k_base()
 	case MODEL_P50K_BASE:
@@ -157,15 +133,6 @@ func initEncoding(encodingName string) (*Encoding, error) {
 	default:
 		return nil, errors.New("Unknown encoding: " + encodingName)
 	}
-}
-
-func gpt2() (*Encoding, error) {
-	encoding, err := r50k_base()
-	if err != nil {
-		return nil, err
-	}
-	encoding.Name = MODEL_GPT2
-	return encoding, nil
 }
 
 func o200k_base() (*Encoding, error) {
@@ -181,54 +148,15 @@ func o200k_base() (*Encoding, error) {
 		`[^\r\n\p{L}\p{N}]?[\p{Lu}\p{Lt}\p{Lm}\p{Lo}\p{M}]*[\p{Ll}\p{Lm}\p{Lo}\p{M}]+(?i:'s|'t|'re|'ve|'m|'ll|'d)?`,
 		`[^\r\n\p{L}\p{N}]?[\p{Lu}\p{Lt}\p{Lm}\p{Lo}\p{M}]+[\p{Ll}\p{Lm}\p{Lo}\p{M}]*(?i:'s|'t|'re|'ve|'m|'ll|'d)?`,
 		`\p{N}{1,3}`,
-		` ?[^\s\p{L}\p{N}]+[\r\n/]*`,
-		`\s*[\r\n]+`,
-		`\s+(?!\S)`,
-		`\s+`,
+		` ?[^` + unicodeSpaces + `\p{L}\p{N}]+[\r\n/]*`,
+		`[` + unicodeSpaces + `]*[\r\n]+`,
+		`[` + unicodeSpaces + `]+`,
 	}
 	return &Encoding{
 		Name:           MODEL_O200K_BASE,
 		PatStr:         strings.Join(pats, "|"),
 		MergeableRanks: ranks,
 		SpecialTokens:  special_tokens,
-	}, nil
-}
-
-func o200k_harmony() (*Encoding, error) {
-	baseEncoding, err := o200k_base()
-	if err != nil {
-		return nil, err
-	}
-
-	specialTokens := make(map[string]int, len(baseEncoding.SpecialTokens)+(201088-200013)+13)
-	for token, rank := range baseEncoding.SpecialTokens {
-		specialTokens[token] = rank
-	}
-
-	specialTokens["<|startoftext|>"] = 199998
-	specialTokens[ENDOFTEXT] = 199999
-	specialTokens["<|reserved_200000|>"] = 200000
-	specialTokens["<|reserved_200001|>"] = 200001
-	specialTokens["<|return|>"] = 200002
-	specialTokens["<|constrain|>"] = 200003
-	specialTokens["<|reserved_200004|>"] = 200004
-	specialTokens["<|channel|>"] = 200005
-	specialTokens["<|start|>"] = 200006
-	specialTokens["<|end|>"] = 200007
-	specialTokens["<|message|>"] = 200008
-	specialTokens["<|reserved_200009|>"] = 200009
-	specialTokens["<|reserved_200010|>"] = 200010
-	specialTokens["<|reserved_200011|>"] = 200011
-	specialTokens["<|call|>"] = 200012
-	for i := 200013; i < 201088; i++ {
-		specialTokens[fmt.Sprintf("<|reserved_%d|>", i)] = i
-	}
-
-	return &Encoding{
-		Name:           MODEL_O200K_HARMONY,
-		PatStr:         baseEncoding.PatStr,
-		MergeableRanks: baseEncoding.MergeableRanks,
-		SpecialTokens:  specialTokens,
 	}, nil
 }
 
@@ -246,7 +174,7 @@ func cl100k_base() (*Encoding, error) {
 	}
 	return &Encoding{
 		Name:           MODEL_CL100K_BASE,
-		PatStr:         `(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\p{L}\p{N}]?\p{L}+|\p{N}{1,3}| ?[^\s\p{L}\p{N}]+[\r\n]*|\s*[\r\n]+|\s+(?!\S)|\s+`,
+		PatStr:         `(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\p{L}\p{N}]?\p{L}+|\p{N}{1,3}| ?[^` + unicodeSpaces + `\p{L}\p{N}]+[\r\n]*|[` + unicodeSpaces + `]*[\r\n]+|[` + unicodeSpaces + `]+`,
 		MergeableRanks: ranks,
 		SpecialTokens:  special_tokens,
 	}, nil
@@ -260,7 +188,7 @@ func p50k_edit() (*Encoding, error) {
 	special_tokens := map[string]int{ENDOFTEXT: 50256, FIM_PREFIX: 50281, FIM_MIDDLE: 50282, FIM_SUFFIX: 50283}
 	return &Encoding{
 		Name:           MODEL_P50K_EDIT,
-		PatStr:         `'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+`,
+		PatStr:         `'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?[^` + unicodeSpaces + `\p{L}\p{N}]+|[` + unicodeSpaces + `]+`,
 		MergeableRanks: ranks,
 		SpecialTokens:  special_tokens,
 	}, nil
@@ -282,7 +210,7 @@ func p50k_base() (*Encoding, error) {
 
 	return &Encoding{
 		Name:           MODEL_P50K_BASE,
-		PatStr:         `'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+`,
+		PatStr:         `'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?[^` + unicodeSpaces + `\p{L}\p{N}]+|[` + unicodeSpaces + `]+`,
 		MergeableRanks: ranks,
 		SpecialTokens:  special_tokens,
 		ExplicitNVocab: 50281,
@@ -298,7 +226,7 @@ func r50k_base() (*Encoding, error) {
 	return &Encoding{
 		Name:           MODEL_R50K_BASE,
 		MergeableRanks: ranks,
-		PatStr:         `'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+`,
+		PatStr:         `'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?[^` + unicodeSpaces + `\p{L}\p{N}]+|[` + unicodeSpaces + `]+`,
 		SpecialTokens:  special_tokens,
 		ExplicitNVocab: 50257,
 	}, nil

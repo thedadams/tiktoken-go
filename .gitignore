@@ -5,3 +5,6 @@ vendor/
 .vscode
 *.swp
 .go-version
+*.prof
+tiktoken-go.test
+benchmark_results/
